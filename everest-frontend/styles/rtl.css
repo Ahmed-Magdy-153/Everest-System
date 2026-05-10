@@ -1,0 +1,4 @@
+/* RTL-specific overrides */
+[dir='rtl'] .flip-x { transform: scaleX(-1); }
+[dir='rtl'] .ml-auto { margin-left: unset; margin-right: auto; }
+[dir='rtl'] .mr-auto { margin-right: unset; margin-left: auto; }

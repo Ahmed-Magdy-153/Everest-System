@@ -1,0 +1,466 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  permissions Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+}
+
+model User {
+  id                   Int                @id @default(autoincrement())
+  name                 String
+  email                String             @unique
+  password             String
+  status               UserStatus         @default(active)
+  avatar               String?
+  color                String?
+  roleId               Int
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  auditLogs            AuditLog[]
+  capitalEntries       CapitalEntry[]
+  uploadedContracts    Contract[]
+  recordedExpenses     Expense[]
+  inventoryLogs        InventoryLog[]
+  recordedMaterialUses MaterialUsage[]
+  notifications        Notification[]
+  recordedPayments     Payment[]
+  createdProjects      Project[]          @relation("ProjectCreatedBy")
+  sessions             Session[]
+  role                 Role               @relation(fields: [roleId], references: [id])
+  recordedAssignments  WorkerAssignment[]
+
+  @@index([roleId])
+  @@index([status])
+}
+
+model Session {
+  id          String   @id @default(cuid())
+  userId      Int
+  tokenHash   String   @unique
+  refreshHash String?  @unique
+  expiresAt   DateTime
+  userAgent   String?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Workshop {
+  id        Int            @id @default(autoincrement())
+  name      String
+  location  String?
+  phone     String?
+  contact   String?
+  status    ActivityStatus @default(active)
+  notes     String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  projects  Project[]
+
+  @@index([status])
+}
+
+model Project {
+  id                Int                @id @default(autoincrement())
+  name              String
+  clientName        String
+  clientPhone       String?
+  clientAddress     String?
+  totalValue        Decimal            @db.Decimal(14, 2)
+  firstPayment      Decimal            @default(0) @db.Decimal(14, 2)
+  status            ProjectStatus      @default(pending)
+  progressMode      ProgressMode       @default(percentage)
+  progressPct       Int                @default(0)
+  needsDetails      Boolean            @default(false)
+  startDate         DateTime?          @db.Date
+  endDate           DateTime?          @db.Date
+  notes             String?
+  workshopId        Int?
+  createdById       Int
+  deletedAt         DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  capitalEntries    CapitalEntry[]
+  contract          Contract?
+  contractItems     ContractItem[]
+  expenses          Expense[]
+  materialUsages    MaterialUsage[]
+  payments          Payment[]
+  createdBy         User               @relation("ProjectCreatedBy", fields: [createdById], references: [id])
+  workshop          Workshop?          @relation(fields: [workshopId], references: [id])
+  workerAssignments WorkerAssignment[]
+
+  @@index([status])
+  @@index([workshopId])
+  @@index([createdById])
+  @@index([deletedAt])
+  @@index([createdAt])
+  @@index([clientName])
+}
+
+model Payment {
+  id           Int           @id @default(autoincrement())
+  amount       Decimal       @db.Decimal(14, 2)
+  date         DateTime      @db.Date
+  method       PaymentMethod @default(cash)
+  notes        String?
+  projectId    Int
+  recordedById Int?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  project      Project       @relation(fields: [projectId], references: [id])
+  recordedBy   User?         @relation(fields: [recordedById], references: [id])
+
+  @@index([projectId])
+  @@index([date])
+  @@index([recordedById])
+}
+
+model Expense {
+  id           Int             @id @default(autoincrement())
+  title        String
+  amount       Decimal         @db.Decimal(14, 2)
+  category     ExpenseCategory
+  date         DateTime        @db.Date
+  paidTo       String?
+  notes        String?
+  projectId    Int?
+  recordedById Int?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  project      Project?        @relation(fields: [projectId], references: [id])
+  recordedBy   User?           @relation(fields: [recordedById], references: [id])
+
+  @@index([projectId])
+  @@index([category])
+  @@index([date])
+  @@index([recordedById])
+}
+
+model Material {
+  id                Int             @id @default(autoincrement())
+  name              String          @unique
+  type              MaterialType
+  quantity          Decimal         @default(0) @db.Decimal(14, 3)
+  unit              MaterialUnit
+  costPerUnit       Decimal         @db.Decimal(14, 2)
+  lowStockThreshold Decimal         @default(0) @db.Decimal(14, 3)
+  supplier          String?
+  notes             String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  inventoryLogs     InventoryLog[]
+  usages            MaterialUsage[]
+
+  @@index([type])
+  @@index([quantity])
+}
+
+model MaterialUsage {
+  id           Int            @id @default(autoincrement())
+  materialId   Int
+  projectId    Int
+  quantityUsed Decimal        @db.Decimal(14, 3)
+  source       MaterialSource @default(from_stock)
+  externalCost Decimal?       @db.Decimal(14, 2)
+  date         DateTime       @db.Date
+  notes        String?
+  recordedById Int?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  material     Material       @relation(fields: [materialId], references: [id])
+  project      Project        @relation(fields: [projectId], references: [id])
+  recordedBy   User?          @relation(fields: [recordedById], references: [id])
+
+  @@index([materialId])
+  @@index([projectId])
+  @@index([date])
+  @@index([source])
+}
+
+model InventoryLog {
+  id             Int             @id @default(autoincrement())
+  materialId     Int
+  action         InventoryAction
+  quantityBefore Decimal         @db.Decimal(14, 3)
+  quantityAfter  Decimal         @db.Decimal(14, 3)
+  costPerUnit    Decimal?        @db.Decimal(14, 2)
+  totalCost      Decimal?        @db.Decimal(14, 2)
+  projectId      Int?
+  projectName    String?
+  notes          String?
+  date           DateTime        @db.Date
+  performedById  Int?
+  createdAt      DateTime        @default(now())
+  material       Material        @relation(fields: [materialId], references: [id])
+  performedBy    User?           @relation(fields: [performedById], references: [id])
+
+  @@index([materialId])
+  @@index([action])
+  @@index([date])
+  @@index([projectId])
+  @@index([performedById])
+}
+
+model Worker {
+  id          Int                @id @default(autoincrement())
+  name        String
+  phone       String?
+  role        WorkerRole         @default(other)
+  dailyRate   Decimal?           @db.Decimal(14, 2)
+  status      ActivityStatus     @default(active)
+  notes       String?
+  color       String?
+  avatar      String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  assignments WorkerAssignment[]
+
+  @@index([status])
+  @@index([role])
+}
+
+model WorkerAssignment {
+  id           Int              @id @default(autoincrement())
+  workerId     Int
+  projectId    Int
+  amount       Decimal          @db.Decimal(14, 2)
+  date         DateTime         @db.Date
+  status       AssignmentStatus @default(pending)
+  notes        String?
+  recordedById Int?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  project      Project          @relation(fields: [projectId], references: [id])
+  recordedBy   User?            @relation(fields: [recordedById], references: [id])
+  worker       Worker           @relation(fields: [workerId], references: [id])
+
+  @@index([workerId])
+  @@index([projectId])
+  @@index([date])
+  @@index([status])
+}
+
+model Contract {
+  id            Int      @id @default(autoincrement())
+  projectId     Int      @unique
+  fileUrl       String
+  fileName      String?
+  fileSize      String?
+  fileType      String?
+  extractedData Json?
+  uploadedById  Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  project       Project  @relation(fields: [projectId], references: [id])
+  uploadedBy    User?    @relation(fields: [uploadedById], references: [id])
+}
+
+model ContractItem {
+  id        Int      @id @default(autoincrement())
+  projectId Int
+  title     String
+  isDone    Boolean  @default(false)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([isDone])
+}
+
+model CapitalEntry {
+  id           Int              @id @default(autoincrement())
+  amount       Decimal          @db.Decimal(14, 2)
+  type         CapitalEntryType
+  note         String?
+  date         DateTime         @db.Date
+  projectId    Int?
+  recordedById Int?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  project      Project?         @relation(fields: [projectId], references: [id])
+  recordedBy   User?            @relation(fields: [recordedById], references: [id])
+
+  @@index([type])
+  @@index([date])
+  @@index([projectId])
+  @@index([recordedById])
+}
+
+model Notification {
+  id        Int              @id @default(autoincrement())
+  userId    Int
+  type      NotificationType
+  title     String
+  body      String
+  isRead    Boolean          @default(false)
+  data      Json?
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  action    String
+  entity    String
+  entityId  Int?
+  changes   Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+enum ProjectStatus {
+  pending
+  in_progress
+  completed
+  cancelled
+  on_hold
+}
+
+enum ProgressMode {
+  percentage
+  contract_items
+}
+
+enum MaterialType {
+  plywood
+  kabs
+  glue
+  qashat
+  atab
+  wood_structure
+  metals
+  finish
+  labor
+  paints
+  glass
+  upholstery
+  fabrics
+  accessories
+  miscellaneous
+  other
+}
+
+enum MaterialUnit {
+  meter
+  piece
+  kg
+  liter
+  sqm
+  sheet
+  roll
+  box
+}
+
+enum MaterialSource {
+  from_stock
+  external_purchase
+}
+
+enum InventoryAction {
+  purchase
+  added
+  increased
+  decreased
+  sent_to_project
+  adjusted
+  deleted
+  edited
+}
+
+enum PaymentMethod {
+  cash
+  bank_transfer
+  check
+  online
+  other
+}
+
+enum ExpenseCategory {
+  materials
+  labor
+  workshop
+  transportation
+  utilities
+  monthly
+  other
+}
+
+enum WorkerRole {
+  carpenter
+  painter
+  electrician
+  plumber
+  welder
+  upholsterer
+  installer
+  supervisor
+  driver
+  other
+}
+
+enum ActivityStatus {
+  active
+  inactive
+}
+
+enum AssignmentStatus {
+  pending
+  paid
+  cancelled
+}
+
+enum CapitalEntryType {
+  income
+  deposit
+  expense
+  purchase
+  withdrawal
+  transfer
+}
+
+enum UserStatus {
+  active
+  inactive
+  suspended
+}
+
+enum NotificationType {
+  low_stock
+  payment_due
+  payment_received
+  project_completed
+  project_delayed
+  expense_recorded
+  user_created
+  system
+}

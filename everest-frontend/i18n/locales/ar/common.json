@@ -1,0 +1,29 @@
+{
+  "nav": {
+    "dashboard":  "لوحة التحكم",
+    "projects":   "المشاريع",
+    "inventory":  "المخزون",
+    "capital":    "رأس المال",
+    "expenses":   "المصروفات",
+    "workers":    "العمال",
+    "workshops":  "الورش",
+    "payments":   "المدفوعات",
+    "contracts":  "العقود",
+    "reports":    "التقارير"
+  },
+  "actions": {
+    "add":    "إضافة",
+    "edit":   "تعديل",
+    "delete": "حذف",
+    "save":   "حفظ",
+    "cancel": "إلغاء",
+    "search": "بحث"
+  },
+  "status": {
+    "active":    "نشط",
+    "inactive":  "غير نشط",
+    "completed": "مكتمل",
+    "pending":   "معلق",
+    "cancelled": "ملغي"
+  }
+}

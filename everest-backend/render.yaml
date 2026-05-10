@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: everest-backend
+    runtime: node
+    plan: free                      # upgrade to 'starter' to avoid spindown
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false                 # set manually in Render dashboard
+      - key: DIRECT_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: CORS_ORIGIN
+        sync: false                 # e.g. https://everest-system.vercel.app

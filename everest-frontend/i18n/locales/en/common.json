@@ -1,0 +1,29 @@
+{
+  "nav": {
+    "dashboard":  "Dashboard",
+    "projects":   "Projects",
+    "inventory":  "Inventory",
+    "capital":    "Capital",
+    "expenses":   "Expenses",
+    "workers":    "Workers",
+    "workshops":  "Workshops",
+    "payments":   "Payments",
+    "contracts":  "Contracts",
+    "reports":    "Reports"
+  },
+  "actions": {
+    "add":    "Add",
+    "edit":   "Edit",
+    "delete": "Delete",
+    "save":   "Save",
+    "cancel": "Cancel",
+    "search": "Search"
+  },
+  "status": {
+    "active":    "Active",
+    "inactive":  "Inactive",
+    "completed": "Completed",
+    "pending":   "Pending",
+    "cancelled":  "Cancelled"
+  }
+}

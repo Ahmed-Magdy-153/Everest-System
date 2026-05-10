@@ -1,5 +1,5 @@
 import type { NextConfig } from 'next'
-
+// Next.js 15.3.3 — patched CVE-2025-66478
 const nextConfig: NextConfig = {
   // instrumentation.ts is enabled by default in Next.js 15
 

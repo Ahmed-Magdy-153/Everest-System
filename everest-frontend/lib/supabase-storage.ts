@@ -24,7 +24,7 @@ export async function uploadContractFile(
   const path = `${projectId}/${Date.now()}.${ext}`
 
   const { error } = await supabase.storage
-    .from('contracts')
+    .from('Contranct')
     .upload(path, file, { upsert: true, contentType: file.type })
 
   if (error) throw new Error(`Upload failed: ${error.message}`)

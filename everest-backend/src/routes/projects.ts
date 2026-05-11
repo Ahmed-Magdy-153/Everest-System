@@ -227,4 +227,39 @@ router.patch('/:id/progress', async (req: AuthRequest, res: Response, next: Next
   }
 })
 
+// ── POST /api/projects/:id/contract ──────────────────────────────────────────
+// Saves contract metadata (URL from Supabase Storage) to the database.
+router.post('/:id/contract', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const projectId = parseInt(req.params.id, 10)
+    const data = z.object({
+      fileUrl:  z.string().url(),
+      fileName: z.string().min(1),
+      fileSize: z.string().optional(),
+      fileType: z.string().optional(),
+    }).parse(req.body)
+
+    const contract = await prisma.contract.upsert({
+      where:  { projectId },
+      create: { projectId, ...data, uploadedById: req.user!.id },
+      update: { ...data, uploadedById: req.user!.id },
+    })
+
+    res.status(201).json(contract)
+  } catch (err) {
+    next(err)
+  }
+})
+
+// ── DELETE /api/projects/:id/contract ─────────────────────────────────────────
+router.delete('/:id/contract', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const projectId = parseInt(req.params.id, 10)
+    await prisma.contract.delete({ where: { projectId } })
+    res.json({ message: 'Contract deleted' })
+  } catch (err) {
+    next(err)
+  }
+})
+
 export default router

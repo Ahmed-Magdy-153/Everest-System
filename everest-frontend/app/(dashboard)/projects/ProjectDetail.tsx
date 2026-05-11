@@ -13,7 +13,7 @@ const PAYMENT_METHODS = ['cash','bank_transfer','check','online','other']
 export default function ProjectDetail({ pid, onClose }: Props) {
   const { t, locale } = useTranslation()
   const { addPaymentToProject, addExpenseToProject, addMaterialFromInventory, toggleContractItem,
-          updateProjectProgress, addContractItem, addWorkerAssignment,
+          updateProjectProgress, addContractItem, addWorkerAssignment, uploadContract,
           inventory, workers, addToast } = useAppStore()
   const project = useAppStore(s => s.projects.find(p => p.id === pid))
   const [tab, setTab] = useState<Tab>(0)
@@ -37,8 +37,23 @@ export default function ProjectDetail({ pid, onClose }: Props) {
   const [waForm, setWaForm] = useState({ workerId: '', amount: '', date: new Date().toISOString().split('T')[0], notes: '' })
 
   // Contract upload
-  const [contractFile, setContractFile] = useState<File | null>(null)
+  const [contractFile, setContractFile]       = useState<File | null>(null)
+  const [uploadingContract, setUploadingContract] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  const handleContractUpload = async () => {
+    if (!contractFile) return
+    setUploadingContract(true)
+    try {
+      await uploadContract(pid, contractFile)
+      addToast(ar ? 'تم رفع العقد ✓' : 'Contract uploaded ✓', 'tok')
+      setContractFile(null)
+    } catch (err) {
+      addToast((err as Error).message || (ar ? 'فشل رفع الملف' : 'Upload failed'), 'ter')
+    } finally {
+      setUploadingContract(false)
+    }
+  }
 
   if (!project) return null
 
@@ -351,19 +366,23 @@ export default function ProjectDetail({ pid, onClose }: Props) {
 
             {contractFile && !project.contract && (
               <div style={{ background: 'var(--okb)', border: '1px solid var(--okr)', borderRadius: 8, padding: '10px 14px', marginBottom: 12 }}>
-                <div className="fl2 jb ic">
+                <div className="fl2 jb ic mb2">
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 12 }}>📎 {contractFile.name}</div>
                     <div style={{ fontSize: 10, color: 'var(--m)' }}>{(contractFile.size / 1024).toFixed(1)} KB</div>
                   </div>
                   <button className="btn berou btn-xs" onClick={() => setContractFile(null)}>✕</button>
                 </div>
-                <div className="al al-wa mt2" style={{ marginTop: 8 }}>
-                  <span>ℹ</span>
-                  <span style={{ fontSize: 11 }}>
-                    {ar ? 'لتفعيل رفع الملفات، قم بإعداد Supabase Storage وربطه بالخادم.' : 'To enable file upload, configure Supabase Storage and connect it to the backend.'}
-                  </span>
-                </div>
+                <button
+                  className="btn bpr btn-sm"
+                  style={{ width: '100%', justifyContent: 'center' }}
+                  disabled={uploadingContract}
+                  onClick={handleContractUpload}
+                >
+                  {uploadingContract
+                    ? (ar ? 'جارٍ الرفع...' : 'Uploading...')
+                    : (ar ? '⬆ رفع العقد' : '⬆ Upload Contract')}
+                </button>
               </div>
             )}
           </div>

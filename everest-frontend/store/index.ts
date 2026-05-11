@@ -87,6 +87,7 @@ interface AppStore {
   toggleContractItem:      (pid: number, cid: number) => Promise<void>
   addContractItem:         (pid: number, title: string) => Promise<void>
   addWorkerAssignment:     (pid: number, workerId: number, amount: number, date: string, notes: string) => Promise<void>
+  uploadContract:          (pid: number, file: File) => Promise<void>
 
   // Expenses
   addExpense:    (e: Omit<Expense,'id'>) => Promise<void>
@@ -407,6 +408,26 @@ export const useAppStore = create<AppStore>((set, get) => ({
       projects: s.projects.map(p =>
         p.id === pid
           ? { ...p, workers: [...p.workers, { id: workerId, name: worker?.name ?? '', amount, date, status: 'pending' }] }
+          : p,
+      ),
+    }))
+  },
+
+  uploadContract: async (pid, file) => {
+    const { uploadContractFile } = await import('@/lib/supabase-storage')
+    const { url } = await uploadContractFile(file, pid)
+
+    await api.post(`/projects/${pid}/contract`, {
+      fileUrl:  url,
+      fileName: file.name,
+      fileSize: `${(file.size / 1024).toFixed(1)} KB`,
+      fileType: file.type,
+    })
+
+    set(s => ({
+      projects: s.projects.map(p =>
+        p.id === pid
+          ? { ...p, contract: { name: file.name, type: file.type, size: `${(file.size / 1024).toFixed(1)} KB`, uploadDate: new Date().toISOString().split('T')[0] } }
           : p,
       ),
     }))

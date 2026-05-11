@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import Link from 'next/link'
 import { useShallow } from 'zustand/react/shallow'
 import { useAppStore, fmtC, fmt, getProjProgress, getProjProfit, getProjExp, isLow, STATUS_BADGE } from '@/store'
 import { useTranslation } from '@/hooks/useTranslation'
@@ -132,7 +133,7 @@ export default function DashboardPage() {
           <div className="card">
             <div className="ch">
               <div className="ct">🏗 {ar ? 'المشاريع النشطة' : 'Active Projects'}</div>
-              <a href="/projects" className="btn bou btn-sm">{ar ? 'عرض الكل' : 'View All'}</a>
+              <Link href="/projects" className="btn bou btn-sm">{ar ? 'عرض الكل' : 'View All'}</Link>
             </div>
             {activeProjects.filter(p => p.status === 'inProgress' || p.status === 'newStatus').length === 0 && (
               <div style={{ color: 'var(--m)', fontSize: 12, padding: '12px 0' }}>{ar ? 'لا توجد مشاريع نشطة' : 'No active projects'}</div>
@@ -185,7 +186,7 @@ export default function DashboardPage() {
           <div className="card">
             <div className="ch">
               <div className="ct">📦 {t('inventory')} — {ar ? 'نظرة سريعة' : 'Quick View'}</div>
-              <a href="/inventory" className="btn bpr btn-sm">{ar ? 'إدارة المخزون' : 'Manage'}</a>
+              <Link href="/inventory" className="btn bpr btn-sm">{ar ? 'إدارة المخزون' : 'Manage'}</Link>
             </div>
             {inventory.slice(0, 5).map(m => (
               <div key={m.id} className="fl2 jb ic" style={{ padding: '5px 0', borderBottom: '1px solid var(--b)' }}>
@@ -209,8 +210,8 @@ export default function DashboardPage() {
               {ar ? 'أضف مشروعاً في ثوانٍ' : 'Add a project in seconds'}
             </div>
             <div className="fl2 g2 fw">
-              <a href="/projects" className="btn bghost btn-sm">🏗 {ar ? 'كل المشاريع' : 'All Projects'} →</a>
-              <a href="/expenses" className="btn bghost btn-sm">💸 {ar ? 'مصروف جديد' : 'New Expense'} →</a>
+              <Link href="/projects" className="btn bghost btn-sm">🏗 {ar ? 'كل المشاريع' : 'All Projects'} →</Link>
+              <Link href="/expenses" className="btn bghost btn-sm">💸 {ar ? 'مصروف جديد' : 'New Expense'} →</Link>
             </div>
           </div>
         </div>

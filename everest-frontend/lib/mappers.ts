@@ -310,11 +310,11 @@ export function fromApiMaterial(m: ApiMaterial): InventoryItem {
 export function toApiMaterial(m: Omit<InventoryItem, 'id' | 'dateAdded' | 'lastUpdated'>) {
   return {
     name:              m.name,
-    type:              'other' as MaterialType,  // frontend has no specific MaterialType; backend resolves on import
-    quantity:          String(m.qty),
+    type:              'other' as MaterialType,
+    quantity:          m.qty,         // number — Zod requires number, not string
     unit:              UNIT_TO_API[m.unit] ?? 'piece',
-    costPerUnit:       String(m.cost),
-    lowStockThreshold: String(m.lowAt),
+    costPerUnit:       m.cost,        // number
+    lowStockThreshold: m.lowAt,       // number
     supplier:          m.supplier || null,
     notes:             m.notes || null,
   }

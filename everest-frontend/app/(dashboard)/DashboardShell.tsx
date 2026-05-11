@@ -6,33 +6,27 @@ import ToastContainer from '@/components/ui/Toast'
 import { useAppStore } from '@/store'
 
 export default function DashboardShell({ children }: { children: React.ReactNode }) {
-  const locale        = useAppStore(s => s.locale)
-  const currentUser   = useAppStore(s => s.currentUser)
-  const loading       = useAppStore(s => s.loading)
-  const initialized   = useAppStore(s => s.initialized)
-  const restoreSession= useAppStore(s => s.restoreSession)
-  const addToast      = useAppStore(s => s.addToast)
-  const router        = useRouter()
+  const locale         = useAppStore(s => s.locale)
+  const currentUser    = useAppStore(s => s.currentUser)
+  const loading        = useAppStore(s => s.loading)
+  const sessionChecked = useAppStore(s => s.sessionChecked)
+  const restoreSession = useAppStore(s => s.restoreSession)
+  const addToast       = useAppStore(s => s.addToast)
+  const router         = useRouter()
 
-  // Set body locale class
-  useEffect(() => {
-    document.body.className = locale
-  }, [locale])
+  useEffect(() => { document.body.className = locale }, [locale])
 
-  // On first mount, try to restore session from stored token
-  useEffect(() => {
-    restoreSession()
-  }, [restoreSession])
+  // Run once on mount — restore JWT session from localStorage
+  useEffect(() => { restoreSession() }, [restoreSession])
 
-  // Redirect to login if definitely not authenticated (after restore attempt)
+  // Only redirect after restoreSession has finished — prevents flash-to-login on full reload
   useEffect(() => {
-    if (!loading && !currentUser) {
+    if (sessionChecked && !loading && !currentUser) {
       router.replace('/login')
     }
-  }, [currentUser, loading, router])
+  }, [sessionChecked, currentUser, loading, router])
 
-  // Global handler: show a toast for any unhandled Promise rejection
-  // This catches errors from fire-and-forget store mutations (addProject, etc.)
+  // Global handler for unhandled promise rejections from fire-and-forget mutations
   useEffect(() => {
     const handler = (event: PromiseRejectionEvent) => {
       const msg = event.reason?.message || 'حدث خطأ غير متوقع'
@@ -42,8 +36,8 @@ export default function DashboardShell({ children }: { children: React.ReactNode
     return () => window.removeEventListener('unhandledrejection', handler)
   }, [addToast])
 
-  // Show loading spinner while restoring session
-  if (loading || (!currentUser && !initialized)) {
+  // Show spinner while session is being restored
+  if (!sessionChecked || loading) {
     return (
       <div style={{ display:'flex', height:'100vh', alignItems:'center', justifyContent:'center', background:'var(--bg)' }}>
         <div style={{ color:'var(--mt)', fontSize:13, fontFamily:'Cairo,sans-serif' }}>جارٍ التحميل…</div>

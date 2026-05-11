@@ -33,8 +33,9 @@ interface AppStore {
   setLocale: (l: Locale) => void
 
   // App lifecycle
-  initialized: boolean
-  loading:     boolean
+  initialized:    boolean
+  loading:        boolean
+  sessionChecked: boolean   // true once restoreSession has finished (success or fail)
 
   // Data
   capital:   number
@@ -105,8 +106,9 @@ interface AppStore {
 export const useAppStore = create<AppStore>((set, get) => ({
   locale:      'ar',
   setLocale:   (locale) => set({ locale }),
-  initialized: false,
-  loading:     false,
+  initialized:    false,
+  loading:        false,
+  sessionChecked: false,
 
   capital:   0,
   capitalTx: [],
@@ -147,21 +149,22 @@ export const useAppStore = create<AppStore>((set, get) => ({
   logout: () => {
     tokenStorage.clear()
     set({
-      currentUser: null,
-      initialized: false,
+      currentUser: null, initialized: false, sessionChecked: false,
       capital: 0, capitalTx: [], inventory: [], invLog: [],
       projects: [], expenses: [], workers: [], users: [],
     })
   },
 
   restoreSession: async () => {
-    if (!tokenStorage.get()) return
+    if (!tokenStorage.get()) { set({ sessionChecked: true }); return }
     try {
       const res = await api.get<ApiUser & { role: ApiUser['role'] }>('/auth/me')
       set({ currentUser: fromApiUser(res) })
       await get().fetchAll()
     } catch {
       tokenStorage.clear()
+    } finally {
+      set({ sessionChecked: true })
     }
   },
 

@@ -59,18 +59,18 @@ export default function ProfileModal({ onClose }: Props) {
       <div className="modal" dir={dir} style={{ maxWidth: 420 }}>
         <div className="modal-hd">
           <span>{t('editProfile')}</span>
-          <button className="btn bghost btn-xs" onClick={onClose}>✕</button>
+          <button className="btn bou btn-xs" onClick={onClose}>✕</button>
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
           <button
-            className={`btn btn-sm ${tab === 'name' ? 'bgprimary' : 'bghost'}`}
+            className={`btn btn-sm ${tab === 'name' ? 'bgprimary' : 'bou'}`}
             onClick={() => setTab('name')}
           >
             {t('changeName')}
           </button>
           <button
-            className={`btn btn-sm ${tab === 'password' ? 'bgprimary' : 'bghost'}`}
+            className={`btn btn-sm ${tab === 'password' ? 'bgprimary' : 'bou'}`}
             onClick={() => setTab('password')}
           >
             {t('changePassword')}
@@ -88,7 +88,7 @@ export default function ProfileModal({ onClose }: Props) {
               autoFocus
             />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
-              <button className="btn bghost" onClick={onClose} disabled={loading}>{t('cancel')}</button>
+              <button className="btn bou" onClick={onClose} disabled={loading}>{t('cancel')}</button>
               <button className="btn bgprimary" onClick={handleNameSave} disabled={loading || !name.trim()}>
                 {loading ? '…' : t('save')}
               </button>
@@ -124,7 +124,7 @@ export default function ProfileModal({ onClose }: Props) {
               placeholder={t('confirmPassword')}
             />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
-              <button className="btn bghost" onClick={onClose} disabled={loading}>{t('cancel')}</button>
+              <button className="btn bou" onClick={onClose} disabled={loading}>{t('cancel')}</button>
               <button
                 className="btn bgprimary"
                 onClick={handlePasswordSave}

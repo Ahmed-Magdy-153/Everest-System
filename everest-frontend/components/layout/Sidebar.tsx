@@ -1,8 +1,10 @@
 'use client'
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTranslation } from '@/hooks/useTranslation'
 import { useAppStore } from '@/store'
+import ProfileModal from '@/components/ui/ProfileModal'
 
 const PAGES = [
   { key: 'dashboard', ic: '📊', href: '/',          section: 'm' },
@@ -21,6 +23,8 @@ export default function Sidebar() {
   const currentUser = useAppStore(s => s.currentUser)
   const logout = useAppStore(s => s.logout)
   const router = useRouter()
+
+  const [showProfile, setShowProfile] = useState(false)
 
   const handleLogout = () => {
     logout()
@@ -67,7 +71,14 @@ export default function Sidebar() {
 
       <div className="sbu">
         <div className="uc">
-          <div className="ava" style={{ background: currentUser?.color }}>{currentUser?.avatar ?? '?'}</div>
+          <div
+            className="ava"
+            style={{ background: currentUser?.color, cursor: 'pointer' }}
+            title={locale === 'ar' ? 'تعديل الملف الشخصي' : 'Edit Profile'}
+            onClick={() => setShowProfile(true)}
+          >
+            {currentUser?.avatar ?? '?'}
+          </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="un">{currentUser?.name}</div>
             <div className="ur">{t(currentUser?.role as any) ?? currentUser?.role}</div>
@@ -89,6 +100,8 @@ export default function Sidebar() {
           </button>
         </div>
       </div>
+
+      {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
     </div>
   )
 }

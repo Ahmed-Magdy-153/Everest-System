@@ -65,6 +65,8 @@ interface AppStore {
   login:          (email: string, password: string) => Promise<boolean>
   logout:         () => void
   restoreSession: () => Promise<void>
+  updateProfile:  (name: string) => Promise<void>
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>
 
   // Capital
   addCapital: (amount: number, source: string, date: string) => Promise<void>
@@ -167,6 +169,15 @@ export const useAppStore = create<AppStore>((set, get) => ({
     } finally {
       set({ sessionChecked: true })
     }
+  },
+
+  updateProfile: async (name) => {
+    const res = await api.patch<ApiUser>('/auth/me', { name })
+    set(s => ({ currentUser: s.currentUser ? { ...s.currentUser, name: res.name } : null }))
+  },
+
+  changePassword: async (currentPassword, newPassword) => {
+    await api.patch('/auth/me/password', { currentPassword, newPassword })
   },
 
   // ── Data fetching ──────────────────────────────────────────────────────────

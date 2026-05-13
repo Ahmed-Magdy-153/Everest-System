@@ -107,4 +107,45 @@ router.get('/roles', authenticate, async (_req: Request, res: Response, next: Ne
   }
 })
 
+// ── PATCH /api/auth/me ────────────────────────────────────────────────────────
+router.patch('/me', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { name } = z.object({ name: z.string().min(2) }).parse(req.body)
+
+    const user = await prisma.user.update({
+      where:   { id: req.user!.id },
+      data:    { name },
+      include: { role: true },
+    })
+
+    const { password: _, ...safeUser } = user
+    res.json(safeUser)
+  } catch (err) {
+    next(err)
+  }
+})
+
+// ── PATCH /api/auth/me/password ───────────────────────────────────────────────
+router.patch('/me/password', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { currentPassword, newPassword } = z.object({
+      currentPassword: z.string().min(1),
+      newPassword:     z.string().min(6),
+    }).parse(req.body)
+
+    const user = await prisma.user.findUnique({ where: { id: req.user!.id } })
+    if (!user) { res.status(404).json({ message: 'User not found' }); return }
+
+    const valid = await bcrypt.compare(currentPassword, user.password)
+    if (!valid) { res.status(400).json({ message: 'Current password is incorrect' }); return }
+
+    const hashed = await bcrypt.hash(newPassword, 12)
+    await prisma.user.update({ where: { id: user.id }, data: { password: hashed } })
+
+    res.json({ message: 'Password updated successfully' })
+  } catch (err) {
+    next(err)
+  }
+})
+
 export default router

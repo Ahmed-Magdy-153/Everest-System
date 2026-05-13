@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAppStore, fmtC } from '@/store'
 import { useTranslation } from '@/hooks/useTranslation'
 import type { Worker, WorkerPayment } from '@/types/store'
@@ -12,7 +12,8 @@ interface Props {
 
 export default function WorkerProfileModal({ worker, onClose }: Props) {
   const { t, locale }   = useTranslation()
-  const projects        = useAppStore(s => s.projects.filter(p => !p.deleted))
+  const allProjects     = useAppStore(s => s.projects)
+  const projects        = useMemo(() => allProjects.filter(p => !p.deleted), [allProjects])
   const payWorker       = useAppStore(s => s.payWorker)
   const addToast        = useAppStore(s => s.addToast)
 

@@ -9,6 +9,80 @@ import type { Worker } from '@/types/store'
 const COLORS = ['#1D6F42','#1A2744','#6C3FC0','#B8860B','#C0392B','#2980B9']
 const WORKER_ROLES = ['carpenter','painter','electrician','plumber','welder','upholsterer','installer','supervisor','driver','other']
 
+// ── Defined outside WorkersPage to keep a stable component reference ──────────
+interface CardProps {
+  w: Worker
+  roleLabel: Record<string, string>
+  onOpen:   (w: Worker) => void
+  onEdit:   (w: Worker, e: React.MouseEvent) => void
+  onDelete: (w: Worker, e: React.MouseEvent) => void
+  egp: string
+  thisMonthLabel: string
+  totalPaidLabel: string
+  activeLabel: string
+  inactiveLabel: string
+}
+
+function WorkerCard({ w, roleLabel, onOpen, onEdit, onDelete, egp, thisMonthLabel, totalPaidLabel, activeLabel, inactiveLabel }: CardProps) {
+  return (
+    <div
+      className="card"
+      style={{ cursor: 'pointer', transition: 'box-shadow .15s' }}
+      onClick={() => onOpen(w)}
+      onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.12)')}
+      onMouseLeave={e => (e.currentTarget.style.boxShadow = '')}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+        <div className="ava" style={{ background: w.color, width: 44, height: 44, fontSize: 18, flexShrink: 0 }}>
+          {w.avatar}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{w.name}</div>
+          <div style={{ color: 'var(--m)', fontSize: 12 }}>
+            {w.type === 'worker' ? (roleLabel[w.role ?? ''] ?? w.role ?? '—') : (w.contact || 'Workshop')}
+          </div>
+          {w.phone && <div style={{ color: 'var(--m)', fontSize: 11, marginTop: 1 }}>{w.phone}</div>}
+        </div>
+        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+          <button className="btn bou btn-xs" onClick={e => onEdit(w, e)}>✏</button>
+          <button className="btn berou btn-xs" onClick={e => onDelete(w, e)}>🗑</button>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <span className={`bdg ${w.status === 'active' ? 'dok' : 'dgy'}`}>
+          {w.status === 'active' ? activeLabel : inactiveLabel}
+        </span>
+        {w.type === 'worker' && w.dailyRate && (
+          <span style={{ fontSize: 11, color: 'var(--m)' }}>
+            {fmtC(w.dailyRate, egp)} / day
+          </span>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, borderTop: '1px solid var(--br)', paddingTop: 10 }}>
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <div style={{ fontSize: 10, color: 'var(--m)', marginBottom: 3 }}>{thisMonthLabel}</div>
+          <div style={{ fontWeight: 700, fontSize: 13, color: (w.thisMonthPaid ?? 0) > 0 ? 'var(--er)' : 'var(--m)' }}>
+            {fmtC(w.thisMonthPaid ?? 0, egp)}
+          </div>
+        </div>
+        <div style={{ width: 1, background: 'var(--br)' }} />
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <div style={{ fontSize: 10, color: 'var(--m)', marginBottom: 3 }}>{totalPaidLabel}</div>
+          <div style={{ fontWeight: 700, fontSize: 13, color: (w.totalPaid ?? 0) > 0 ? 'var(--er)' : 'var(--m)' }}>
+            {fmtC(w.totalPaid ?? 0, egp)}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ textAlign: 'center', marginTop: 10, fontSize: 11, color: 'var(--m)' }}>
+        Click to view full profile
+      </div>
+    </div>
+  )
+}
+
 export default function WorkersPage() {
   const { t, locale } = useTranslation()
   const { workers, addWorker, updateWorker, deleteWorker, addToast, setLocale } = useAppStore()
@@ -78,69 +152,17 @@ export default function WorkersPage() {
     addToast(ar ? 'تم الحذف ✓' : 'Deleted ✓', 'tok')
   }
 
-  const WorkerCard = ({ w }: { w: Worker }) => (
-    <div
-      className="card"
-      style={{ cursor: 'pointer', transition: 'box-shadow .15s' }}
-      onClick={() => setProfileWorker(w)}
-      onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.12)')}
-      onMouseLeave={e => (e.currentTarget.style.boxShadow = '')}
-    >
-      {/* Top: avatar + name + actions */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
-        <div className="ava" style={{ background: w.color, width: 44, height: 44, fontSize: 18, flexShrink: 0 }}>
-          {w.avatar}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{w.name}</div>
-          <div style={{ color: 'var(--m)', fontSize: 12 }}>
-            {w.type === 'worker'
-              ? (roleLabel[w.role ?? ''] ?? w.role ?? '—')
-              : (w.contact || (ar ? 'ورشة' : 'Workshop'))}
-          </div>
-          {w.phone && <div style={{ color: 'var(--m)', fontSize: 11, marginTop: 1 }}>{w.phone}</div>}
-        </div>
-        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
-          <button className="btn bou btn-xs" onClick={e => openEdit(w, e)}>✏</button>
-          <button className="btn berou btn-xs" onClick={e => handleDelete(w, e)}>🗑</button>
-        </div>
-      </div>
-
-      {/* Status + daily rate */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <span className={`bdg ${w.status === 'active' ? 'dok' : 'dgy'}`}>
-          {w.status === 'active' ? t('active') : t('inactive')}
-        </span>
-        {w.type === 'worker' && w.dailyRate && (
-          <span style={{ fontSize: 11, color: 'var(--m)' }}>
-            {fmtC(w.dailyRate, t('egp'))} / {ar ? 'يوم' : 'day'}
-          </span>
-        )}
-      </div>
-
-      {/* Payment totals */}
-      <div style={{ display: 'flex', gap: 8, borderTop: '1px solid var(--br)', paddingTop: 10 }}>
-        <div style={{ flex: 1, textAlign: 'center' }}>
-          <div style={{ fontSize: 10, color: 'var(--m)', marginBottom: 3 }}>{t('thisMonth')}</div>
-          <div style={{ fontWeight: 700, fontSize: 13, color: (w.thisMonthPaid ?? 0) > 0 ? 'var(--er)' : 'var(--m)' }}>
-            {fmtC(w.thisMonthPaid ?? 0, t('egp'))}
-          </div>
-        </div>
-        <div style={{ width: 1, background: 'var(--br)' }} />
-        <div style={{ flex: 1, textAlign: 'center' }}>
-          <div style={{ fontSize: 10, color: 'var(--m)', marginBottom: 3 }}>{t('totalPaid')}</div>
-          <div style={{ fontWeight: 700, fontSize: 13, color: (w.totalPaid ?? 0) > 0 ? 'var(--er)' : 'var(--m)' }}>
-            {fmtC(w.totalPaid ?? 0, t('egp'))}
-          </div>
-        </div>
-      </div>
-
-      {/* Click hint */}
-      <div style={{ textAlign: 'center', marginTop: 10, fontSize: 11, color: 'var(--m)' }}>
-        {ar ? 'اضغط لعرض الملف الكامل' : 'Click to view full profile'}
-      </div>
-    </div>
-  )
+  const cardProps = {
+    roleLabel,
+    onOpen:   setProfileWorker,
+    onEdit:   openEdit,
+    onDelete: handleDelete,
+    egp:      t('egp'),
+    thisMonthLabel: t('thisMonth'),
+    totalPaidLabel: t('totalPaid'),
+    activeLabel:    t('active'),
+    inactiveLabel:  t('inactive'),
+  }
 
   return (
     <>
@@ -170,7 +192,7 @@ export default function WorkersPage() {
               👷 {ar ? 'العمال' : 'Workers'} ({humanWorkers.length})
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-              {humanWorkers.map(w => <WorkerCard key={w.id} w={w} />)}
+              {humanWorkers.map(w => <WorkerCard key={w.id} w={w} {...cardProps} />)}
             </div>
           </div>
         )}
@@ -182,7 +204,7 @@ export default function WorkersPage() {
               🔧 {ar ? 'الورش' : 'Workshops'} ({workshops.length})
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-              {workshops.map(w => <WorkerCard key={w.id} w={w} />)}
+              {workshops.map(w => <WorkerCard key={w.id} w={w} {...cardProps} />)}
             </div>
           </div>
         )}

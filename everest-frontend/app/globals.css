@@ -52,6 +52,7 @@ body.en{font-family:'Plus Jakarta Sans',sans-serif;direction:ltr;text-align:left
 .bxl{background:var(--xl);color:#fff}.bxl:hover{background:#145230}
 .bai{background:var(--ai);color:#fff}.bai:hover{background:#5230a0}
 .bwa{background:var(--wa);color:#fff}.bwa:hover{background:var(--gd)}
+.bgprimary{background:var(--g);color:#fff}.bgprimary:hover{background:var(--gd)}
 .bou{background:transparent;border:1.5px solid var(--b);color:var(--m)}.bou:hover{border-color:var(--g);color:var(--g)}
 .berou{background:transparent;border:1.5px solid var(--err);color:var(--er)}.berou:hover{background:var(--erb)}
 .bghost{background:rgba(255,255,255,.13);color:#fff;border:1px solid rgba(255,255,255,.22)}.bghost:hover{background:rgba(255,255,255,.22)}
@@ -206,8 +207,16 @@ textarea.fc{resize:vertical}
 input[type=range]{-webkit-appearance:none;width:100%;height:5px;border-radius:3px;background:var(--b);outline:none;cursor:pointer}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--g);cursor:pointer}
 
+/* ── ALIAS CLASSES (used by ProfileModal / WorkerProfileModal) ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;display:flex;align-items:center;justify-content:center;padding:12px}
+.modal{background:var(--s);border-radius:var(--r);box-shadow:0 24px 64px rgba(0,0,0,.28);width:min(96vw,540px);max-height:90vh;overflow-y:auto;animation:su .2s ease;padding:16px;display:flex;flex-direction:column;gap:0}
+.modal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;font-size:13px;font-weight:700}
+.inp{width:100%;padding:7px 10px;border:1.5px solid var(--b);border-radius:var(--rs);font-size:12px;color:var(--tx);background:var(--s);outline:none;transition:border-color .15s;font-family:inherit}
+.inp:focus{border-color:var(--g)}
+.field-label{display:block;font-size:11px;font-weight:600;color:var(--m);margin-bottom:3px}
+
 /* ── HAMBURGER (hidden on desktop) ───────── */
-.hbg{display:none;align-items:center;justify-content:center;width:34px;height:34px;border-radius:var(--rs);border:1.5px solid var(--b);background:transparent;cursor:pointer;flex-shrink:0;color:var(--tx);font-size:18px}
+.hbg{display:none;align-items:center;justify-content:center;width:36px;height:36px;border-radius:var(--rs);border:none;background:rgba(255,255,255,.15);cursor:pointer;flex-shrink:0;color:#fff;font-size:20px;line-height:1}
 
 /* ── MOBILE HEADER (hidden on desktop) ──── */
 .mob-hd{display:none;background:var(--n);padding:0 12px;height:50px;align-items:center;justify-content:space-between;flex-shrink:0;z-index:200}
@@ -216,23 +225,30 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
 /* ── SIDEBAR OVERLAY (hidden on desktop) ── */
 .sb-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.52);z-index:498;cursor:pointer}
 
-/* ── RESPONSIVE ─────────────────────────── */
+/* ── TABLET (769px – 1024px): sidebar narrow, 3-col grids ── */
+@media(min-width:769px) and (max-width:1024px){
+  .sb{width:190px}
+  .sg{grid-template-columns:repeat(3,1fr)}
+  .cnt{padding:12px}
+  .topb{padding:0 12px}
+}
+
+/* ── MOBILE (≤ 768px): hamburger drawer ── */
 @media(max-width:768px){
   /* Layout */
   .app{flex-direction:column}
   .mn{width:100%;flex:1;overflow:hidden}
 
-  /* Sidebar becomes fixed drawer */
+  /* Sidebar → fixed drawer */
   .sb{
     position:fixed;inset:0 auto 0 0;z-index:499;
     transform:translateX(-100%);transition:transform .25s ease;
     width:240px;height:100dvh;overflow-y:auto;
   }
   body.ar .sb{inset:0 0 0 auto;transform:translateX(100%)}
-  .sb.sb-open{transform:translateX(0)}
-  body.ar .sb.sb-open{transform:translateX(0)}
+  .sb.sb-open{transform:translateX(0) !important}
 
-  /* Overlay shown when sidebar open */
+  /* Overlay */
   .sb-ov.sb-open{display:block}
 
   /* Mobile header */
@@ -240,7 +256,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
   .hbg{display:flex}
 
   /* Content */
-  .topb{height:auto;padding:7px 10px;gap:5px}
+  .topb{height:auto;min-height:44px;padding:6px 10px;gap:5px}
   .tbt{font-size:13px}
   .cnt{padding:10px}
 
@@ -249,24 +265,34 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
   .sg3{grid-template-columns:repeat(2,1fr)}
   .g2c,.g3c{grid-template-columns:1fr}
 
-  /* Stat cards smaller on mobile */
+  /* Stat cards */
   .sv{font-size:15px}
   .sc{padding:10px}
 
-  /* Buttons wrap nicely */
-  .tba{gap:4px}
+  /* Buttons */
+  .tba{gap:4px;flex-wrap:wrap}
   .btn-sm{padding:4px 8px;font-size:10px}
 
-  /* Modal full-width on mobile */
-  .md,.md-lg{width:calc(100vw - 16px);max-height:92dvh}
+  /* Modals */
+  .md,.md-lg,.modal{width:calc(100vw - 16px) !important;max-height:92dvh}
+  .modal-bg{padding:8px}
 
-  /* Tables scroll */
+  /* Tables */
   .tw{-webkit-overflow-scrolling:touch}
 
-  /* Filter bar stacks */
+  /* Filter bar */
   .fbar{gap:5px;padding:8px 10px}
   .fctl{font-size:10px;padding:4px 7px}
+}
 
-  /* Profile modal full width */
-  .modal{width:calc(100vw - 16px) !important;max-height:92dvh !important}
+/* ── SMALL PHONES (≤ 400px) ── */
+@media(max-width:400px){
+  .sg{grid-template-columns:1fr 1fr;gap:5px}
+  .sv{font-size:13px}
+  .sc{padding:8px}
+  .cnt{padding:8px}
+  .btn{font-size:10px;padding:4px 8px}
+  .btn-sm{padding:3px 6px;font-size:9px}
+  .tbt{font-size:12px}
+  .mob-hd{height:44px}
 }

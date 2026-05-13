@@ -4,23 +4,32 @@ import { useAppStore, fmtC } from '@/store'
 import { useTranslation } from '@/hooks/useTranslation'
 import Modal from '@/components/ui/Modal'
 
+type SourceType = 'deposit' | 'income' | 'return'
+
 const TYPE_BADGE: Record<string,string> = { income:'dok', expense:'der', purchase:'dwa', transfer:'dnv', deposit:'dok', withdrawal:'der' }
 
 export default function CapitalPage() {
   const { t, locale } = useTranslation()
-  const { capital, capitalTx, addCapital, addToast, setLocale } = useAppStore()
+  const { capital, capitalTx, projects, addCapital, addToast, setLocale } = useAppStore()
 
   const ar = locale === 'ar'
 
-  const [showModal, setShowModal] = useState(false)
-  const [form, setForm]           = useState({ amount: '', source: '', date: new Date().toISOString().split('T')[0], type: 'deposit' })
-  const [typeFilter, setTypeFilter] = useState('')
-  const [dateFrom, setDateFrom]     = useState('')
-  const [dateTo, setDateTo]         = useState('')
+  const [showModal, setShowModal]     = useState(false)
+  const [sourceType, setSourceType]   = useState<SourceType>('deposit')
+  const [selectedProject, setSelectedProject] = useState<number | ''>('')
+  const [form, setForm]               = useState({ amount: '', note: '', date: new Date().toISOString().split('T')[0] })
+  const [typeFilter, setTypeFilter]   = useState('')
+  const [dateFrom, setDateFrom]       = useState('')
+  const [dateTo, setDateTo]           = useState('')
+
+  const activeProjects = useMemo(() => projects.filter(p => !p.deleted), [projects])
 
   const typeLabel: Record<string,string> = {
-    income: t('income'), expense: t('expense'), purchase: t('purchase'),
-    transfer: t('transfer'), deposit: ar?'إيداع':'Deposit', withdrawal: ar?'سحب':'Withdrawal',
+    income: ar ? 'دفعة مشروع' : 'Project Payment',
+    expense: t('expense'), purchase: t('purchase'),
+    transfer: t('returnBadge'),
+    deposit: ar ? 'إيراد عادي' : 'Regular Income',
+    withdrawal: ar ? 'سحب' : 'Withdrawal',
   }
 
   const filtered = useMemo(() => capitalTx.filter(tx => {
@@ -30,16 +39,39 @@ export default function CapitalPage() {
     return true
   }), [capitalTx, typeFilter, dateFrom, dateTo])
 
-  const filteredInflow  = filtered.filter(x => x.type === 'income' || x.type === 'deposit').reduce((s, x) => s + x.amount, 0)
-  const filteredOutflow = filtered.filter(x => x.type !== 'income' && x.type !== 'deposit').reduce((s, x) => s + x.amount, 0)
+  const filteredInflow  = filtered.filter(x => x.type === 'income' || x.type === 'deposit' || x.type === 'transfer').reduce((s, x) => s + x.amount, 0)
+  const filteredOutflow = filtered.filter(x => x.type === 'expense' || x.type === 'purchase' || x.type === 'withdrawal').reduce((s, x) => s + x.amount, 0)
+
+  const resetModal = () => {
+    setSourceType('deposit')
+    setSelectedProject('')
+    setForm({ amount: '', note: '', date: new Date().toISOString().split('T')[0] })
+  }
 
   const handleSave = () => {
     const amount = parseFloat(form.amount)
     if (!amount || amount <= 0) { addToast(t('amountInvalid'), 'ter'); return }
-    addCapital(amount, form.source || (ar ? 'إضافة رأس مال' : 'Capital addition'), form.date)
+    if (sourceType === 'income' && !selectedProject) {
+      addToast(ar ? 'اختر المشروع أولاً' : 'Please select a project', 'ter'); return
+    }
+
+    const project = activeProjects.find(p => p.id === selectedProject)
+    const defaultNote = sourceType === 'income'
+      ? (ar ? `دفعة من مشروع: ${project?.name}` : `Project payment: ${project?.name}`)
+      : sourceType === 'return'
+      ? (ar ? 'مرتجع' : 'Return')
+      : (ar ? 'إضافة رأس مال' : 'Capital addition')
+
+    addCapital(
+      amount,
+      form.note.trim() || defaultNote,
+      form.date,
+      sourceType,
+      sourceType === 'income' && selectedProject ? (selectedProject as number) : undefined,
+    )
     addToast(t('capitalUpdated'), 'tok')
     setShowModal(false)
-    setForm({ amount: '', source: '', date: new Date().toISOString().split('T')[0], type: 'deposit' })
+    resetModal()
   }
 
   const ALL_TYPES = ['income','expense','purchase','transfer','deposit','withdrawal']
@@ -94,17 +126,20 @@ export default function CapitalPage() {
                 {filtered.length === 0 && (
                   <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--m)', padding: 24 }}>{ar ? 'لا توجد معاملات مطابقة' : 'No matching transactions'}</td></tr>
                 )}
-                {filtered.map(tx => (
-                  <tr key={tx.id}>
-                    <td style={{ color: 'var(--m)', fontSize: 11 }}>{tx.date}</td>
-                    <td><span className={`bdg ${TYPE_BADGE[tx.type] || 'dgy'}`}>{typeLabel[tx.type] || tx.type}</span></td>
-                    <td>{tx.reason || '—'}</td>
-                    <td style={{ color: 'var(--m)' }}>{tx.project || '—'}</td>
-                    <td style={{ fontWeight: 700, color: (tx.type === 'income' || tx.type === 'deposit') ? 'var(--ok)' : 'var(--er)' }}>
-                      {(tx.type === 'income' || tx.type === 'deposit') ? '+' : '-'}{fmtC(tx.amount, t('egp'))}
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map(tx => {
+                  const isInflow = tx.type === 'income' || tx.type === 'deposit' || tx.type === 'transfer'
+                  return (
+                    <tr key={tx.id}>
+                      <td style={{ color: 'var(--m)', fontSize: 11 }}>{tx.date}</td>
+                      <td><span className={`bdg ${TYPE_BADGE[tx.type] || 'dgy'}`}>{typeLabel[tx.type] || tx.type}</span></td>
+                      <td>{tx.reason || '—'}</td>
+                      <td style={{ color: 'var(--m)' }}>{tx.project || '—'}</td>
+                      <td style={{ fontWeight: 700, color: isInflow ? 'var(--ok)' : 'var(--er)' }}>
+                        {isInflow ? '+' : '-'}{fmtC(tx.amount, t('egp'))}
+                      </td>
+                    </tr>
+                  )
+                })}
                 {filtered.length > 0 && (
                   <tr style={{ background: 'var(--bg)' }}>
                     <td colSpan={4} style={{ fontWeight: 700, color: 'var(--m)' }}>{ar ? 'صافي الفترة' : 'Net for period'}</td>
@@ -120,11 +155,69 @@ export default function CapitalPage() {
       </div>
 
       {showModal && (
-        <Modal title={`💰 ${t('addCapital')}`} onClose={() => setShowModal(false)} onSave={handleSave} saveLabel={`💰 ${t('addCapital')}`} saveCls="bok2">
-          <div className="al al-ok mb3"><span>💰</span><span>{ar ? 'سيُضاف المبلغ تلقائياً لرأس المال' : 'Auto-added to capital and transaction log'}</span></div>
-          <div className="fg"><label className="fl">{t('amount')} *</label><input className="fc" type="number" min="1" placeholder="0" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} /></div>
-          <div className="fg"><label className="fl">{t('date')}</label><input className="fc" type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></div>
-          <div className="fg"><label className="fl">{t('source')}</label><input className="fc" placeholder={ar ? 'مثال: دفعة عميل' : 'e.g. Client payment'} value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value }))} /></div>
+        <Modal
+          title={`💰 ${t('addCapital')}`}
+          onClose={() => { setShowModal(false); resetModal() }}
+          onSave={handleSave}
+          saveLabel={`💰 ${t('addCapital')}`}
+          saveCls="bok2"
+        >
+          {/* Source type selector */}
+          <div className="fg">
+            <label className="fl">{t('capSourceType')} *</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {(['deposit', 'income', 'return'] as SourceType[]).map(st => (
+                <button
+                  key={st}
+                  type="button"
+                  className={`btn btn-sm ${sourceType === st ? 'bgprimary' : 'bghost'}`}
+                  onClick={() => { setSourceType(st); setSelectedProject('') }}
+                  style={{ flex: 1 }}
+                >
+                  {st === 'deposit' ? (ar ? '💵 إيراد عادي' : '💵 Regular') :
+                   st === 'income'  ? (ar ? '🏗 دفعة مشروع' : '🏗 Project') :
+                                      (ar ? '🔄 مرتجعات'   : '🔄 Return')}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Project dropdown — shown only for income */}
+          {sourceType === 'income' && (
+            <div className="fg">
+              <label className="fl">{t('capSelectProject')} *</label>
+              <select className="fc" value={selectedProject} onChange={e => setSelectedProject(e.target.value ? Number(e.target.value) : '')}>
+                <option value="">{ar ? '— اختر المشروع —' : '— Select project —'}</option>
+                {activeProjects.map(p => (
+                  <option key={p.id} value={p.id}>{p.name} ({p.client})</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="fg">
+            <label className="fl">{t('amount')} *</label>
+            <input className="fc" type="number" min="1" placeholder="0" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} autoFocus />
+          </div>
+          <div className="fg">
+            <label className="fl">{t('date')}</label>
+            <input className="fc" type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+          </div>
+          <div className="fg">
+            <label className="fl">{t('notes')}</label>
+            <input
+              className="fc"
+              placeholder={
+                sourceType === 'return'
+                  ? (ar ? 'مثال: مرتجع مواد خشب' : 'e.g. Wood materials return')
+                  : sourceType === 'income'
+                  ? (ar ? 'ملاحظة إضافية (اختياري)' : 'Additional note (optional)')
+                  : (ar ? 'مثال: دفعة عميل' : 'e.g. Client payment')
+              }
+              value={form.note}
+              onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
+            />
+          </div>
         </Modal>
       )}
     </>

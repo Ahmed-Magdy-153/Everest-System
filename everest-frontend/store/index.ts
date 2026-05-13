@@ -69,7 +69,7 @@ interface AppStore {
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>
 
   // Capital
-  addCapital: (amount: number, source: string, date: string) => Promise<void>
+  addCapital: (amount: number, source: string, date: string, sourceType?: 'deposit' | 'income' | 'return', projectId?: number) => Promise<void>
 
   // Inventory
   addInventoryItem:    (item: Omit<InventoryItem,'id'|'dateAdded'|'lastUpdated'>, purchase?: boolean) => Promise<void>
@@ -237,8 +237,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   // ── Capital ────────────────────────────────────────────────────────────────
-  addCapital: async (amount, source, date) => {
-    await api.post('/capital', { amount, type: 'deposit', note: source, date })
+  addCapital: async (amount, source, date, sourceType = 'deposit', projectId) => {
+    const type = sourceType === 'return' ? 'transfer' : sourceType
+    await api.post('/capital', { amount, type, note: source, date, projectId: projectId ?? null })
     await get().fetchCapital()
   },
 

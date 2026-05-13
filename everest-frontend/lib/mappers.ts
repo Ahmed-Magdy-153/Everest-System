@@ -359,12 +359,12 @@ export function toApiInventoryLog(l: Omit<InvLog, 'id'>, materialId: number, pro
 export function fromApiCapitalEntry(c: ApiCapitalEntry): CapitalTx {
   return {
     id:      c.id,
-    type:    c.type as CapitalTx['type'],   // overlapping values: income, expense, purchase, transfer
+    type:    c.type as CapitalTx['type'],
     amount:  parseFloat(c.amount),
     reason:  c.note ?? '',
     date:    c.date,
-    project: '',   // projectId is the FK; name resolved by caller
-    by:      '',   // recordedById is the FK; name resolved by caller
+    project: c.project?.name ?? '',
+    by:      c.recordedBy?.name ?? '',
   }
 }
 

@@ -252,6 +252,8 @@ export interface ApiCapitalEntry {
   recordedById: number | null
   createdAt:    string
   updatedAt:    string
+  project?:     { id: number; name: string } | null
+  recordedBy?:  { id: number; name: string } | null
 }
 
 // ─── NOTIFICATIONS ────────────────────────────────────────────────────────────

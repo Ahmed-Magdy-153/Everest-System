@@ -4,15 +4,14 @@ import Link from 'next/link'
 import { useShallow } from 'zustand/react/shallow'
 import { useAppStore, fmtC, fmt, getProjProgress, getProjProfit, getProjExp, isLow, STATUS_BADGE } from '@/store'
 import { useTranslation } from '@/hooks/useTranslation'
-import Modal from '@/components/ui/Modal'
+import AddCapitalModal from '@/components/ui/AddCapitalModal'
 
 export default function DashboardPage() {
   const { t, locale } = useTranslation()
-  const { capital, capitalTx, inventory, addCapital, addToast, currentUser } = useAppStore()
+  const { capital, capitalTx, inventory, currentUser } = useAppStore()
   const activeProjects = useAppStore(useShallow(s => s.projects.filter(p => !p.deleted)))
 
   const [showCapModal, setShowCapModal] = useState(false)
-  const [capForm, setCapForm] = useState({ amount: '', source: '', date: new Date().toISOString().split('T')[0] })
 
   const ar = locale === 'ar'
 
@@ -26,15 +25,6 @@ export default function DashboardPage() {
 
   // Workshop total from expenses (category = workshop)
   const workshopTotal = useAppStore(s => s.expenses.filter(e => e.category === 'workshop').reduce((sum, e) => sum + e.amount, 0))
-
-  const handleAddCapital = () => {
-    const amount = parseFloat(capForm.amount)
-    if (!amount || amount <= 0) { addToast(t('amountInvalid'), 'ter'); return }
-    addCapital(amount, capForm.source || (ar ? 'إضافة رأس مال' : 'Capital addition'), capForm.date)
-    addToast(t('capitalUpdated'), 'tok')
-    setShowCapModal(false)
-    setCapForm({ amount: '', source: '', date: new Date().toISOString().split('T')[0] })
-  }
 
   const statusLabel: Record<string, string> = {
     inProgress: t('inProgress'), completed: t('completed'), delayed: t('delayed'),
@@ -217,24 +207,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Add Capital Modal */}
-      {showCapModal && (
-        <Modal title={`💰 ${t('addCapital')}`} onClose={() => setShowCapModal(false)} onSave={handleAddCapital} saveLabel={`💰 ${t('addCapital')}`} saveCls="bok2">
-          <div className="al al-ok mb3"><span>💰</span><span>{ar ? 'سيُضاف المبلغ تلقائياً لرأس المال' : 'Auto-added to capital and transaction log'}</span></div>
-          <div className="fg">
-            <label className="fl">{t('amount')} *</label>
-            <input className="fc" type="number" min="1" placeholder="0" value={capForm.amount} onChange={e => setCapForm(f => ({ ...f, amount: e.target.value }))} />
-          </div>
-          <div className="fg">
-            <label className="fl">{t('date')}</label>
-            <input className="fc" type="date" value={capForm.date} onChange={e => setCapForm(f => ({ ...f, date: e.target.value }))} />
-          </div>
-          <div className="fg">
-            <label className="fl">{t('source')}</label>
-            <input className="fc" placeholder={ar ? 'مثال: دفعة عميل' : 'e.g. Client payment'} value={capForm.source} onChange={e => setCapForm(f => ({ ...f, source: e.target.value }))} />
-          </div>
-        </Modal>
-      )}
+      {showCapModal && <AddCapitalModal onClose={() => setShowCapModal(false)} />}
     </>
   )
 }

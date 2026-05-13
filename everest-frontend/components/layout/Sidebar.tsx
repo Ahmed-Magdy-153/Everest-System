@@ -16,7 +16,12 @@ const PAGES = [
   { key: 'reports',   ic: '📈', href: '/reports',   section: 'o' },
 ] as const
 
-export default function Sidebar() {
+interface SidebarProps {
+  isOpen?: boolean
+  onClose?: () => void
+}
+
+export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname()
   const { t, locale } = useTranslation()
   const setLocale = useAppStore(s => s.setLocale)
@@ -43,7 +48,7 @@ export default function Sidebar() {
     href === '/' ? pathname === '/' : pathname.startsWith(href)
 
   return (
-    <div className="sb">
+    <div className={`sb${isOpen ? ' sb-open' : ''}`}>
       <div className="sbl">
         <div className="li">🏛</div>
         <div className="lt">{t('logoTitle')}</div>
@@ -60,6 +65,7 @@ export default function Sidebar() {
               <Link
                 href={page.href}
                 className={`ni${isActive(page.href) ? ' active' : ''}`}
+                onClick={onClose}
               >
                 <span>{page.ic}</span>
                 <span>{t(page.key as any)}</span>

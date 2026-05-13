@@ -64,6 +64,13 @@ export interface Worker {
   phone: string; role?: string; contact?: string; address?: string
   status: string; color: string; avatar: string; amount?: number
   dailyRate?: number
+  totalPaid?: number
+  thisMonthPaid?: number
+}
+
+export interface WorkerPayment {
+  id: number; amount: number; date: string
+  project?: string | null; notes?: string | null; status?: string
 }
 
 export interface User {

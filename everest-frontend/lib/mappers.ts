@@ -402,30 +402,35 @@ export function toApiContractItem(c: Omit<ContractItem, 'id'>, projectId: number
 // Workers and Workshops are separate backend models.
 // The frontend merges them into one Worker type with type:'worker'|'workshop'.
 
-export function fromApiWorker(w: ApiWorker): Worker {
+export function fromApiWorker(w: ApiWorker & { totalPaid?: number; thisMonthPaid?: number }): Worker {
   return {
-    id:     w.id,
-    name:   w.name,
-    type:   'worker',
-    phone:  w.phone ?? '',
-    role:   w.role,
-    status: w.status,
-    color:  w.color ?? '#1A2744',
-    avatar: w.avatar ?? w.name.charAt(0),
+    id:           w.id,
+    name:         w.name,
+    type:         'worker',
+    phone:        w.phone ?? '',
+    role:         w.role,
+    status:       w.status,
+    color:        w.color ?? '#1A2744',
+    avatar:       w.avatar ?? w.name.charAt(0),
+    dailyRate:    w.dailyRate ? parseFloat(w.dailyRate) : undefined,
+    totalPaid:    w.totalPaid    ?? 0,
+    thisMonthPaid:w.thisMonthPaid ?? 0,
   }
 }
 
-export function fromApiWorkshop(w: ApiWorkshop): Worker {
+export function fromApiWorkshop(w: ApiWorkshop & { totalPaid?: number; thisMonthPaid?: number }): Worker {
   return {
-    id:      w.id,
-    name:    w.name,
-    type:    'workshop',
-    phone:   w.phone ?? '',
-    contact: w.contact ?? '',
-    address: w.location ?? '',
-    status:  w.status,
-    color:   '#6C3FC0',
-    avatar:  w.name.charAt(0),
+    id:           w.id,
+    name:         w.name,
+    type:         'workshop',
+    phone:        w.phone ?? '',
+    contact:      w.contact ?? '',
+    address:      w.location ?? '',
+    status:       w.status,
+    color:        '#6C3FC0',
+    avatar:       w.name.charAt(0),
+    totalPaid:    w.totalPaid    ?? 0,
+    thisMonthPaid:w.thisMonthPaid ?? 0,
   }
 }
 

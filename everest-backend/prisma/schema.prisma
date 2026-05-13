@@ -237,7 +237,7 @@ model Worker {
 model WorkerAssignment {
   id           Int              @id @default(autoincrement())
   workerId     Int
-  projectId    Int
+  projectId    Int?
   amount       Decimal          @db.Decimal(14, 2)
   date         DateTime         @db.Date
   status       AssignmentStatus @default(pending)
@@ -245,7 +245,7 @@ model WorkerAssignment {
   recordedById Int?
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
-  project      Project          @relation(fields: [projectId], references: [id])
+  project      Project?         @relation(fields: [projectId], references: [id])
   recordedBy   User?            @relation(fields: [recordedById], references: [id])
   worker       Worker           @relation(fields: [workerId], references: [id])
 

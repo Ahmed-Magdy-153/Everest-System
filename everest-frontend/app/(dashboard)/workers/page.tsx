@@ -1,12 +1,12 @@
 'use client'
 import { useState } from 'react'
-import { useAppStore } from '@/store'
+import { useAppStore, fmtC } from '@/store'
 import { useTranslation } from '@/hooks/useTranslation'
 import Modal from '@/components/ui/Modal'
+import WorkerProfileModal from '@/components/ui/WorkerProfileModal'
 import type { Worker } from '@/types/store'
 
 const COLORS = ['#1D6F42','#1A2744','#6C3FC0','#B8860B','#C0392B','#2980B9']
-const STATUS_BADGE: Record<string,string> = { active:'dok', inactive:'dgy' }
 const WORKER_ROLES = ['carpenter','painter','electrician','plumber','welder','upholsterer','installer','supervisor','driver','other']
 
 export default function WorkersPage() {
@@ -18,13 +18,13 @@ export default function WorkersPage() {
   const [showWorkerModal,   setShowWorkerModal]   = useState(false)
   const [showWorkshopModal, setShowWorkshopModal] = useState(false)
   const [editWorker,        setEditWorker]        = useState<Worker | null>(null)
+  const [profileWorker,     setProfileWorker]     = useState<Worker | null>(null)
 
   const [wForm,  setWForm]  = useState({ name: '', phone: '', role: 'other', status: 'active', dailyRate: '' })
   const [wsForm, setWsForm] = useState({ name: '', phone: '', contact: '', address: '', status: 'active' })
   const [editWForm,  setEditWForm]  = useState(wForm)
   const [editWsForm, setEditWsForm] = useState(wsForm)
 
-  const statusLabel: Record<string,string> = { active: t('active'), inactive: t('inactive') }
   const roleLabel: Record<string,string> = {
     carpenter: ar?'نجار':'Carpenter', painter: ar?'دهان':'Painter', electrician: ar?'كهربائي':'Electrician',
     plumber: ar?'سباك':'Plumber', welder: ar?'لحام':'Welder', upholsterer: ar?'منجد':'Upholsterer',
@@ -33,6 +33,9 @@ export default function WorkersPage() {
 
   const humanWorkers = workers.filter(w => w.type === 'worker')
   const workshops    = workers.filter(w => w.type === 'workshop')
+
+  const totalPaidAll    = workers.reduce((s, w) => s + (w.totalPaid ?? 0), 0)
+  const totalPaidMonth  = workers.reduce((s, w) => s + (w.thisMonthPaid ?? 0), 0)
 
   const handleAddWorker = () => {
     if (!wForm.name.trim()) { addToast(t('fieldRequired'), 'ter'); return }
@@ -50,7 +53,8 @@ export default function WorkersPage() {
     setWsForm({ name: '', phone: '', contact: '', address: '', status: 'active' })
   }
 
-  const openEdit = (w: Worker) => {
+  const openEdit = (w: Worker, e: React.MouseEvent) => {
+    e.stopPropagation()
     setEditWorker(w)
     if (w.type === 'worker') setEditWForm({ name: w.name, phone: w.phone, role: w.role ?? 'other', status: w.status, dailyRate: String(w.dailyRate ?? '') })
     else setEditWsForm({ name: w.name, phone: w.phone, contact: w.contact ?? '', address: w.address ?? '', status: w.status })
@@ -67,51 +71,73 @@ export default function WorkersPage() {
     setEditWorker(null)
   }
 
-  const handleDelete = (w: Worker) => {
+  const handleDelete = (w: Worker, e: React.MouseEvent) => {
+    e.stopPropagation()
     if (!confirm(`${t('deleteWarn')}\n${w.name}`)) return
     deleteWorker(w.id)
     addToast(ar ? 'تم الحذف ✓' : 'Deleted ✓', 'tok')
   }
 
-  const WorkerTable = ({ list, title }: { list: Worker[]; title: string }) => (
-    <div className="card mb4">
-      <div className="ch"><div className="ct">{title}</div></div>
-      {list.length === 0 && <div style={{ color: 'var(--m)', fontSize: 12, padding: '8px 0' }}>{ar ? 'لا يوجد بعد' : 'None yet'}</div>}
-      <div className="tw">
-        <table>
-          <thead>
-            <tr>
-              <th>{t('name')}</th>
-              <th>{t('phone')}</th>
-              <th>{t('role')}/{ar ? 'جهة التواصل' : 'Contact'}</th>
-              {list[0]?.type === 'worker' && <th>{ar ? 'أجر يومي' : 'Daily Rate'}</th>}
-              <th>{t('status')}</th>
-              <th>{t('actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.map(w => (
-              <tr key={w.id}>
-                <td>
-                  <div className="fl2 ic g2">
-                    <div className="ava" style={{ background: w.color, width: 26, height: 26, fontSize: 11 }}>{w.avatar}</div>
-                    <strong>{w.name}</strong>
-                  </div>
-                </td>
-                <td style={{ color: 'var(--m)' }}>{w.phone || '—'}</td>
-                <td style={{ color: 'var(--m)' }}>{w.type === 'worker' ? (roleLabel[w.role ?? ''] ?? w.role) : (w.contact || '—')}</td>
-                {w.type === 'worker' && <td style={{ color: 'var(--m)' }}>{w.dailyRate ? `${w.dailyRate} ${t('egp')}` : '—'}</td>}
-                <td><span className={`bdg ${STATUS_BADGE[w.status] || 'dgy'}`}>{statusLabel[w.status] || w.status}</span></td>
-                <td>
-                  <div className="fl2 g1">
-                    <button className="btn bou btn-xs" onClick={() => openEdit(w)}>✏</button>
-                    <button className="btn berou btn-xs" onClick={() => handleDelete(w)}>🗑</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+  const WorkerCard = ({ w }: { w: Worker }) => (
+    <div
+      className="card"
+      style={{ cursor: 'pointer', transition: 'box-shadow .15s' }}
+      onClick={() => setProfileWorker(w)}
+      onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.12)')}
+      onMouseLeave={e => (e.currentTarget.style.boxShadow = '')}
+    >
+      {/* Top: avatar + name + actions */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+        <div className="ava" style={{ background: w.color, width: 44, height: 44, fontSize: 18, flexShrink: 0 }}>
+          {w.avatar}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{w.name}</div>
+          <div style={{ color: 'var(--m)', fontSize: 12 }}>
+            {w.type === 'worker'
+              ? (roleLabel[w.role ?? ''] ?? w.role ?? '—')
+              : (w.contact || (ar ? 'ورشة' : 'Workshop'))}
+          </div>
+          {w.phone && <div style={{ color: 'var(--m)', fontSize: 11, marginTop: 1 }}>{w.phone}</div>}
+        </div>
+        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+          <button className="btn bou btn-xs" onClick={e => openEdit(w, e)}>✏</button>
+          <button className="btn berou btn-xs" onClick={e => handleDelete(w, e)}>🗑</button>
+        </div>
+      </div>
+
+      {/* Status + daily rate */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <span className={`bdg ${w.status === 'active' ? 'dok' : 'dgy'}`}>
+          {w.status === 'active' ? t('active') : t('inactive')}
+        </span>
+        {w.type === 'worker' && w.dailyRate && (
+          <span style={{ fontSize: 11, color: 'var(--m)' }}>
+            {fmtC(w.dailyRate, t('egp'))} / {ar ? 'يوم' : 'day'}
+          </span>
+        )}
+      </div>
+
+      {/* Payment totals */}
+      <div style={{ display: 'flex', gap: 8, borderTop: '1px solid var(--br)', paddingTop: 10 }}>
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <div style={{ fontSize: 10, color: 'var(--m)', marginBottom: 3 }}>{t('thisMonth')}</div>
+          <div style={{ fontWeight: 700, fontSize: 13, color: (w.thisMonthPaid ?? 0) > 0 ? 'var(--er)' : 'var(--m)' }}>
+            {fmtC(w.thisMonthPaid ?? 0, t('egp'))}
+          </div>
+        </div>
+        <div style={{ width: 1, background: 'var(--br)' }} />
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <div style={{ fontSize: 10, color: 'var(--m)', marginBottom: 3 }}>{t('totalPaid')}</div>
+          <div style={{ fontWeight: 700, fontSize: 13, color: (w.totalPaid ?? 0) > 0 ? 'var(--er)' : 'var(--m)' }}>
+            {fmtC(w.totalPaid ?? 0, t('egp'))}
+          </div>
+        </div>
+      </div>
+
+      {/* Click hint */}
+      <div style={{ textAlign: 'center', marginTop: 10, fontSize: 11, color: 'var(--m)' }}>
+        {ar ? 'اضغط لعرض الملف الكامل' : 'Click to view full profile'}
       </div>
     </div>
   )
@@ -128,21 +154,56 @@ export default function WorkersPage() {
       </div>
 
       <div className="cnt pg">
-        <div className="sg sg3">
-          <div className="sc nv"><div className="sl">{ar ? 'الكل' : 'All'}</div><div className="sv">{workers.length}</div></div>
+        {/* Stats */}
+        <div className="sg">
+          <div className="sc nv"><div className="sl">{ar ? 'الكل' : 'All'}</div><div className="sv">{workers.length}</div><div className="ss">{ar ? 'عمال + ورش' : 'Workers + Workshops'}</div></div>
           <div className="sc gn"><div className="sl">{ar ? 'عمال' : 'Workers'}</div><div className="sv">{humanWorkers.length}</div></div>
           <div className="sc pp"><div className="sl">{ar ? 'ورش' : 'Workshops'}</div><div className="sv">{workshops.length}</div></div>
+          <div className="sc rd"><div className="sl">{t('thisMonth')}</div><div className="sv">{fmtC(totalPaidMonth, t('egp'))}</div><div className="ss">{ar ? 'إجمالي مدفوع' : 'Total paid'}</div></div>
+          <div className="sc rd"><div className="sl">{t('totalPaid')}</div><div className="sv">{fmtC(totalPaidAll, t('egp'))}</div></div>
         </div>
 
-        <WorkerTable list={humanWorkers} title={`👷 ${ar ? 'العمال' : 'Workers'}`} />
-        <WorkerTable list={workshops}    title={`🔧 ${ar ? 'الورش' : 'Workshops'}`} />
+        {/* Workers section */}
+        {humanWorkers.length > 0 && (
+          <div className="mb4">
+            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--m)', marginBottom: 12 }}>
+              👷 {ar ? 'العمال' : 'Workers'} ({humanWorkers.length})
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+              {humanWorkers.map(w => <WorkerCard key={w.id} w={w} />)}
+            </div>
+          </div>
+        )}
+
+        {/* Workshops section */}
+        {workshops.length > 0 && (
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--m)', marginBottom: 12 }}>
+              🔧 {ar ? 'الورش' : 'Workshops'} ({workshops.length})
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+              {workshops.map(w => <WorkerCard key={w.id} w={w} />)}
+            </div>
+          </div>
+        )}
+
+        {workers.length === 0 && (
+          <div className="card" style={{ textAlign: 'center', color: 'var(--m)', padding: 40 }}>
+            {ar ? 'لا يوجد عمال أو ورش بعد. اضغط + للإضافة.' : 'No workers or workshops yet. Click + to add.'}
+          </div>
+        )}
       </div>
+
+      {/* Worker Profile Modal */}
+      {profileWorker && (
+        <WorkerProfileModal worker={profileWorker} onClose={() => setProfileWorker(null)} />
+      )}
 
       {/* Add Worker Modal */}
       {showWorkerModal && (
         <Modal title={`👷 ${t('addWorker')}`} onClose={() => setShowWorkerModal(false)} onSave={handleAddWorker} saveLabel={`👷 ${t('addWorker')}`} saveCls="bok2">
           <div className="g2c">
-            <div className="fg"><label className="fl">{t('fullName')} *</label><input className="fc" value={wForm.name} onChange={e => setWForm(f => ({ ...f, name: e.target.value }))} /></div>
+            <div className="fg"><label className="fl">{t('fullName')} *</label><input className="fc" value={wForm.name} onChange={e => setWForm(f => ({ ...f, name: e.target.value }))} autoFocus /></div>
             <div className="fg"><label className="fl">{t('phone')}</label><input className="fc" value={wForm.phone} onChange={e => setWForm(f => ({ ...f, phone: e.target.value }))} /></div>
           </div>
           <div className="g2c">
@@ -168,7 +229,7 @@ export default function WorkersPage() {
       {showWorkshopModal && (
         <Modal title={`🔧 ${t('addWorkshop')}`} onClose={() => setShowWorkshopModal(false)} onSave={handleAddWorkshop} saveLabel={`🔧 ${t('addWorkshop')}`} saveCls="bai">
           <div className="g2c">
-            <div className="fg"><label className="fl">{ar ? 'اسم الورشة' : 'Workshop Name'} *</label><input className="fc" value={wsForm.name} onChange={e => setWsForm(f => ({ ...f, name: e.target.value }))} /></div>
+            <div className="fg"><label className="fl">{ar ? 'اسم الورشة' : 'Workshop Name'} *</label><input className="fc" value={wsForm.name} onChange={e => setWsForm(f => ({ ...f, name: e.target.value }))} autoFocus /></div>
             <div className="fg"><label className="fl">{t('contact')}</label><input className="fc" value={wsForm.contact} onChange={e => setWsForm(f => ({ ...f, contact: e.target.value }))} /></div>
           </div>
           <div className="g2c">

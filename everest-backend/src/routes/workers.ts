@@ -29,21 +29,64 @@ const workshopSchema = z.object({
 
 const assignmentSchema = z.object({
   workerId:  z.number().int().positive(),
-  projectId: z.number().int().positive(),
+  projectId: z.number().int().positive().nullable().optional(),
   amount:    z.number().positive(),
   date:      z.string(),
   status:    z.enum(['pending', 'paid', 'cancelled']).default('pending'),
   notes:     z.string().nullable().optional(),
 })
 
+const paySchema = z.object({
+  amount:    z.number().positive(),
+  date:      z.string(),
+  projectId: z.number().int().positive().nullable().optional(),
+  notes:     z.string().nullable().optional(),
+})
+
 // ── GET /api/workers ──────────────────────────────────────────────────────────
 router.get('/', async (_req: AuthRequest, res: Response, next: NextFunction) => {
   try {
+    const now        = new Date()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+
     const [workers, workshops] = await Promise.all([
-      prisma.worker.findMany({ orderBy: { name: 'asc' } }),
+      prisma.worker.findMany({
+        orderBy: { name: 'asc' },
+        include: {
+          _count: { select: { assignments: true } },
+          assignments: {
+            select: { amount: true, date: true },
+          },
+        },
+      }),
       prisma.workshop.findMany({ orderBy: { name: 'asc' } }),
     ])
-    res.json({ workers, workshops })
+
+    const workersWithTotals = workers.map(w => {
+      const totalPaid      = w.assignments.reduce((s, a) => s + Number(a.amount), 0)
+      const thisMonthPaid  = w.assignments
+        .filter(a => new Date(a.date) >= monthStart)
+        .reduce((s, a) => s + Number(a.amount), 0)
+      const { assignments: _, ...rest } = w
+      return { ...rest, totalPaid, thisMonthPaid }
+    })
+
+    // Workshop totals: sum expenses with category=workshop and paidTo=workshop.name
+    const workshopExpenses = await prisma.expense.findMany({
+      where: { category: 'workshop' },
+      select: { paidTo: true, amount: true, date: true },
+    })
+
+    const workshopsWithTotals = workshops.map(ws => {
+      const exps          = workshopExpenses.filter(e => e.paidTo === ws.name)
+      const totalPaid     = exps.reduce((s, e) => s + Number(e.amount), 0)
+      const thisMonthPaid = exps
+        .filter(e => new Date(e.date) >= monthStart)
+        .reduce((s, e) => s + Number(e.amount), 0)
+      return { ...ws, totalPaid, thisMonthPaid }
+    })
+
+    res.json({ workers: workersWithTotals, workshops: workshopsWithTotals })
   } catch (err) {
     next(err)
   }
@@ -145,6 +188,103 @@ router.delete('/:id', async (req: AuthRequest, res: Response, next: NextFunction
   }
 })
 
+// ── GET /api/workers/:id/payments ────────────────────────────────────────────
+router.get('/:id/payments', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const id   = parseInt(req.params.id, 10)
+    const type = str(req.query.type)
+
+    if (type === 'workshop') {
+      const ws = await prisma.workshop.findUnique({ where: { id } })
+      if (!ws) { res.status(404).json({ message: 'Workshop not found' }); return }
+      const expenses = await prisma.expense.findMany({
+        where:   { category: 'workshop', paidTo: ws.name },
+        include: { project: { select: { id: true, name: true } } },
+        orderBy: { date: 'desc' },
+      })
+      res.json(expenses.map(e => ({
+        id:      e.id,
+        amount:  Number(e.amount),
+        date:    e.date,
+        project: e.project?.name ?? null,
+        notes:   e.notes ?? e.title,
+      })))
+      return
+    }
+
+    const assignments = await prisma.workerAssignment.findMany({
+      where:   { workerId: id },
+      include: { project: { select: { id: true, name: true } } },
+      orderBy: { date: 'desc' },
+    })
+    res.json(assignments.map(a => ({
+      id:      a.id,
+      amount:  Number(a.amount),
+      date:    a.date,
+      project: a.project?.name ?? null,
+      notes:   a.notes ?? null,
+      status:  a.status,
+    })))
+  } catch (err) {
+    next(err)
+  }
+})
+
+// ── POST /api/workers/:id/pay ─────────────────────────────────────────────────
+router.post('/:id/pay', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const id   = parseInt(req.params.id, 10)
+    const type = str(req.query.type)
+    const data = paySchema.parse(req.body)
+
+    if (type === 'workshop') {
+      const ws = await prisma.workshop.findUnique({ where: { id } })
+      if (!ws) { res.status(404).json({ message: 'Workshop not found' }); return }
+      const expense = await prisma.expense.create({
+        data: {
+          title:        data.notes || `دفعة - ${ws.name}`,
+          amount:       data.amount,
+          category:     'workshop',
+          date:         new Date(data.date),
+          paidTo:       ws.name,
+          notes:        data.notes ?? null,
+          projectId:    data.projectId ?? null,
+          recordedById: req.user!.id,
+        },
+      })
+      res.status(201).json({
+        id: expense.id, amount: Number(expense.amount),
+        date: expense.date, notes: expense.notes,
+      })
+      return
+    }
+
+    const assignment = await prisma.workerAssignment.create({
+      data: {
+        workerId:    id,
+        projectId:   data.projectId ?? undefined,
+        amount:      data.amount,
+        date:        new Date(data.date),
+        status:      'paid',
+        notes:       data.notes ?? null,
+        recordedById: req.user!.id,
+      },
+      include: { project: { select: { id: true, name: true } } },
+    })
+    const proj = (assignment as any).project as { id: number; name: string } | null
+    res.status(201).json({
+      id:      assignment.id,
+      amount:  Number(assignment.amount),
+      date:    assignment.date,
+      project: proj?.name ?? null,
+      notes:   assignment.notes,
+      status:  assignment.status,
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
 // ── POST /api/workers/assignments ─────────────────────────────────────────────
 router.post('/assignments', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
@@ -153,7 +293,7 @@ router.post('/assignments', async (req: AuthRequest, res: Response, next: NextFu
     const assignment = await prisma.workerAssignment.create({
       data: {
         workerId:    data.workerId,
-        projectId:   data.projectId,
+        projectId:   data.projectId ?? undefined,
         amount:      data.amount,
         date:        new Date(data.date),
         status:      data.status,

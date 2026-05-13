@@ -100,6 +100,7 @@ interface AppStore {
   addWorker:    (w: Omit<Worker,'id'>) => Promise<void>
   updateWorker: (id: number, patch: Partial<Omit<Worker,'id'>>) => Promise<void>
   deleteWorker: (id: number) => Promise<void>
+  payWorker:    (id: number, type: 'worker' | 'workshop', amount: number, date: string, projectId: number | null, notes: string) => Promise<void>
 
   // Users
   addUser: (u: Omit<User,'id'>) => Promise<void>
@@ -501,6 +502,21 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const w = get().workers.find(x => x.id === id)
     await api.delete(`/workers/${id}?type=${w?.type === 'workshop' ? 'workshop' : 'worker'}`)
     set(s => ({ workers: s.workers.filter(w => w.id !== id) }))
+  },
+
+  payWorker: async (id, type, amount, date, projectId, notes) => {
+    await api.post(`/workers/${id}/pay?type=${type}`, { amount, date, projectId, notes })
+    // Update local totals optimistically
+    const now        = new Date()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const isThisMonth = new Date(date) >= monthStart
+    set(s => ({
+      workers: s.workers.map(w => w.id === id ? {
+        ...w,
+        totalPaid:     (w.totalPaid     ?? 0) + amount,
+        thisMonthPaid: (w.thisMonthPaid ?? 0) + (isThisMonth ? amount : 0),
+      } : w),
+    }))
   },
 
   // ── Users ──────────────────────────────────────────────────────────────────
